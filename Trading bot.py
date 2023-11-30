@@ -11,7 +11,9 @@ class Strategy(bt.Strategy):
     params = (('fast', 20),  ('slow', 100), ('order_percentage', 0.95),
         ('rsiperiod', 14), ('rsi_overbought', 70.0), ('rsi_oversold', 30.0),
         ('macd1', 12), ('macd2', 26), ('macdsig', 9),
-        ('smaperiod', 30),('dirperiod', 10))
+        ('smaperiod', 30),('dirperiod', 10),
+        # Price is 10% less than entry point
+        ('stop_loss', 0.1))
 
     def log(self, txt, dt=None):
         dt = dt or self.datas[0].datetime.date(0)
@@ -24,6 +26,8 @@ class Strategy(bt.Strategy):
         if order.status in [order.Completed]:
             if order.isbuy():
                 self.log('BUY EXECUTED, %.2f' % order.executed.price)
+                # Dynamic order that chases the price as it moves
+                self.sell(exectype=bt.Order.StopTrail, trailamount=self.params.stop_loss)
             elif order.issell():
                 self.log('SELL EXECUTED, %.2f' % order.executed.price)
             # Record day when order was executed
@@ -49,7 +53,7 @@ class Strategy(bt.Strategy):
             plotname='100 day EMA'
         )
         self.crossover = bt.indicators.CrossOver(self.fast_ema, self.slow_ema, plotname='EMAs CrossOver')
-        # Stochastic RSI indicator
+        # RSI indicator
         self.rsi = bt.indicators.RelativeStrengthIndex(period=self.params.rsiperiod)
         # MACD indicator
         self.macd = bt.indicators.MACD(
@@ -117,8 +121,8 @@ if __name__ == '__main__':
     # Creating data feed
     data = bt.feeds.YahooFinanceCSVData(
         dataname=datapath,
-        fromdate=datetime.datetime(1997, 1, 1),
-        todate=datetime.datetime(2006, 12, 31),
+        fromdate=datetime.datetime(1995, 1, 3),
+        todate=datetime.datetime(2014, 12, 31),
         reverse=False)
 
     cerebro = bt.Cerebro()
@@ -129,5 +133,5 @@ if __name__ == '__main__':
 
     print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
     cerebro.run()
-    print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
+    print('\nFinal Portfolio Value: %.2f' % cerebro.broker.getvalue())
     cerebro.plot()
